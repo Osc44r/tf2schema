@@ -28,15 +28,17 @@ class SchemaManager:
                  steam_api_key: Optional[str] = None,
                  file_path: Optional[Path] = None,
                  save_to_file: Optional[bool] = False,
-                 update_interval: Optional[timedelta] = timedelta(days=1)
-                 ):
+                 update_interval: Optional[timedelta] = timedelta(days=1),
+                 file_only_mode: Optional[bool] = False,
+                 raise_on_outdated_file_mode: Optional[bool] = False):
         self.steam_api_key = steam_api_key
         self.file_path = file_path or Path().parent / "schema.json"
         self.save_to_file = save_to_file
         self.update_interval = update_interval
+        self.file_only_mode = file_only_mode
+        self.raise_on_outdated_file_mode = raise_on_outdated_file_mode
 
         self.schema: Optional[Schema] = None
-
         self._task = None
 
     @property
@@ -44,27 +46,32 @@ class SchemaManager:
         """Whether the schema has been fetched."""
         return self.schema is not None
 
-    async def get(self,
-                  *,
-                  force_from_file: Optional[bool] = False) -> Schema:
+    async def get(self, *, force_from_file: Optional[bool] = False) -> Schema:
         """
         Get the schema, fetching from Steam if necessary.
 
-        :param force_from_file: Whether to force fetching from files.
+        :param force_from_file: Whether to force fetching from the file.
         """
         try:
             schema = await self.get_schema_from_file()
 
         except FileNotFoundError as e:
-            if force_from_file:
+            if force_from_file or self.file_only_mode:
                 raise e
 
             schema = None
 
-        if force_from_file:
+        if force_from_file or self.file_only_mode:
+            if schema and not self._is_schema_outdated(schema):
+                return schema
+
+            if self.file_only_mode and self.raise_on_outdated_file_mode:
+                raise RuntimeError("File-only mode is enabled, but the schema is outdated or unavailable.")
+
+            log.warning("Using outdated schema in file-only mode.")
             return schema
 
-        if schema is None or time.time() - schema.fetch_time > self.update_interval.total_seconds():
+        if schema is None or self._is_schema_outdated(schema):
             return await self.fetch_schema()
 
         return schema
@@ -111,6 +118,7 @@ class SchemaManager:
     async def get_schema_from_file(self) -> Schema:
         """
         Get the schema from the file.
+
         :return: Schema object.
         """
         data = await self._get_schema_from_file()
@@ -118,39 +126,47 @@ class SchemaManager:
 
         return self.schema
 
-    # Update task
     async def run(self, *, force_from_file: Optional[bool] = False) -> asyncio.Task:
         """Run the update task."""
-        self._task = asyncio.create_task(self._update_loop())
+        self._task = asyncio.create_task(self._update_loop(force_from_file=force_from_file))
         return self._task
 
     async def stop(self) -> None:
         """Stop the update task."""
         if self._task:
             self._task.cancel()
-            await self._task
+            try:
+                await self._task
 
-    async def _update_loop(self,
-                           *,
-                           force_from_file: Optional[bool] = False) -> None:
-        """Update loop for fetching schema."""
+            except asyncio.CancelledError:
+                log.info("Update task has been successfully cancelled.")
+
+            self._task = None
+
+    async def _update_loop(self, *, force_from_file: Optional[bool] = False) -> None:
+        """Update loop for fetching schema or checking file updates."""
         try_again = 1
 
         while True:
+            log.debug("Updating TF2 schema.")
+
             try:
                 await self.get(force_from_file=force_from_file)
                 await asyncio.sleep(self.update_interval.total_seconds())
                 try_again = 1
-                continue
 
             except FileNotFoundError as e:
-                log.error(f"Failed to read schema file. {e}. Trying again in {try_again}s")
+                log.error(f"Failed to read schema file. {e}. Trying again in {try_again}s.")
 
             except Exception as e:
-                log.error(f"Failed to fetch schema. {e}. Trying again in {try_again}s")
+                log.error(f"Failed to update schema. {e}. Trying again in {try_again}s.")
 
             await asyncio.sleep(try_again)
-            try_again *= 2
+            try_again = min(try_again * 2, 60)
+
+    def _is_schema_outdated(self, schema: Schema) -> bool:
+        """Check if the schema is outdated based on the update interval."""
+        return time.time() - schema.fetch_time > self.update_interval.total_seconds()
 
     # HTTP calls
     async def _fetch_page(self, url: str,
