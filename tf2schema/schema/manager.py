@@ -103,7 +103,7 @@ class SchemaManager:
         """
         items, schema_overview, paint_kits, items_game = await asyncio.gather(
             self._fetch_items_from_steam(),
-            self._fetch_overview(),
+            self._fetch_overview_from_steam(),
             self._fetch_paint_kits_from_github(),
             self._fetch_items_game_from_github()
         )
@@ -166,7 +166,7 @@ class SchemaManager:
                 log.error(f"Failed to read schema file. {e}. Trying again in {try_again}s.")
 
             except Exception as e:
-                log.error(f"Failed to update schema. {e}. Trying again in {try_again}s.")
+                log.error(f"Failed to update schema. {e}. Trying again in {try_again}s.", exc_info=True)
 
             await asyncio.sleep(try_again)
             try_again = min(try_again * 2, 60)
@@ -203,7 +203,13 @@ class SchemaManager:
 
                     response.raise_for_status()
 
-                    if response.json() is None and response.text is None:
+                    try:
+                        data = response.json()
+
+                    except json.JSONDecodeError:
+                        data = None
+
+                    if data is None and response.text is None:
                         raise ValueError("No data received")
 
                     return response
@@ -218,7 +224,7 @@ class SchemaManager:
         if self.steam_api_key is None:
             raise ValueError("Steam API key is required to get schema from Steam")
 
-        url = "https://api.steampowered.com/IEconItems_440/GetSchemaItems"
+        url = "https://api.steampowered.com/IEconItems_440/GetSchemaItems/v1/"
         params = {
             "key": self.steam_api_key,
             "language": "en"
@@ -274,16 +280,16 @@ class SchemaManager:
 
         return vdf.loads(response.text)["items_game"]
 
-    async def _fetch_overview(self) -> dict:
+    async def _fetch_overview_from_steam(self) -> dict:
         """Fetch the schema overview from the Steam API."""
-        url = "https://api.steampowered.com/IEconItems_440/GetSchemaOverview"
+        url = "https://api.steampowered.com/IEconItems_440/GetSchemaOverview/v1/"
         params = {
             "key": self.steam_api_key,
             "language": "en"
         }
 
         response = await self._fetch_page(url, params=params)
-        data = response.json()
+        data = response.json()['result']
 
         del data['status']
 
@@ -305,3 +311,8 @@ class SchemaManager:
         os.makedirs(self.file_path.parent, exist_ok=True)
         async with aiofiles.open(self.file_path, "w") as f:
             await f.write(json.dumps(data))
+
+    def _delete_schema_file(self) -> None:
+        """Delete the schema file if exists."""
+        if self.file_path.exists():
+            os.remove(self.file_path)
