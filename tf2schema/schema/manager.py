@@ -173,6 +173,14 @@ class SchemaManager:
 
         return paintkits_obj
 
+    async def _fetch_items_game_from_github(self) -> dict:
+        """Fetch items_game from the TF2 Github repo."""
+        url = 'https://raw.githubusercontent.com/SteamDatabase/GameTracking-TF2/master/tf/scripts/items/items_game.txt'
+
+        response = await self._fetch_page(url)
+
+        return vdf.loads(response.text)["items_game"]
+
     # File operations
     async def _get_schema_from_file(self) -> dict:
         """Get the schema from the file."""
