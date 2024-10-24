@@ -1,5 +1,6 @@
-from setuptools import setup, find_packages
 import pathlib
+
+from setuptools import setup, find_packages
 
 path = pathlib.Path(__file__).parent
 
@@ -7,7 +8,7 @@ README = (path / "README.md").read_text()
 
 setup(
     name="tf2schema",
-    version="0.0.1",
+    version="0.0.2",
     description="A Python package to interact with the Team Fortress 2 Schema",
     long_description=README,
     long_description_content_type="text/markdown",
@@ -27,4 +28,3 @@ setup(
         "API",
     ]
 )
-
