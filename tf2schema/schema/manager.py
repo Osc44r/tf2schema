@@ -1,3 +1,6 @@
+import asyncio
+import os
+import time
 from logging import getLogger
 from pathlib import Path
 from typing import Optional
@@ -18,11 +21,31 @@ class SchemaManager:
                  *,
                  steam_api_key: Optional[str] = None,
                  file_path: Optional[Path] = None,
+                 save_to_file: Optional[bool] = False,
                  ):
         self.steam_api_key = steam_api_key
         self.file_path = file_path or Path().parent / "schema.json"
+        self.save_to_file = save_to_file
 
         self.schema: Optional[Schema] = None
+
+    @property
+    def has_schema(self) -> bool:
+        return self.schema is not None
+
+    async def wait_for_schema(self, timeout: Optional[int] = 30):
+        start = time.time()
+        while not self.has_schema:
+            await asyncio.sleep(0.1)
+            if time.time() - start > timeout:
+                raise TimeoutError("Timed out waiting for schema")
+
+    async def fetch_from_steam(self):
+        data = await self._fetch_from_steam()
+        self.schema = Schema(data)
+
+        if self.save_to_file:
+            await self._save_to_file(data)
 
     async def _fetch_page(self, url: str,
                           *,
@@ -78,5 +101,6 @@ class SchemaManager:
             return await f.read()
 
     async def _save_to_file(self, data: str):
+        os.makedirs(self.file_path.parent, exist_ok=True)
         async with aiofiles.open(self.file_path, "w") as f:
             await f.write(data)
