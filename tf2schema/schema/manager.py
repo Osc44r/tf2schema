@@ -37,6 +37,8 @@ class SchemaManager:
 
         self.schema: Optional[Schema] = None
 
+        self._task = None
+
     @property
     def has_schema(self) -> bool:
         """Whether the schema has been fetched."""
@@ -44,22 +46,22 @@ class SchemaManager:
 
     async def get(self,
                   *,
-                  force_files: Optional[bool] = False) -> Schema:
+                  force_from_file: Optional[bool] = False) -> Schema:
         """
         Get the schema, fetching from Steam if necessary.
 
-        :param force_files: Whether to force fetching from files.
+        :param force_from_file: Whether to force fetching from files.
         """
         try:
             schema = await self.get_schema_from_file()
 
         except FileNotFoundError as e:
-            if force_files:
+            if force_from_file:
                 raise e
 
             schema = None
 
-        if force_files:
+        if force_from_file:
             return schema
 
         if schema is None or time.time() - schema.fetch_time > self.update_interval.total_seconds():
@@ -115,6 +117,40 @@ class SchemaManager:
         self.schema = Schema(data['raw'], data['fetch_time'])
 
         return self.schema
+
+    # Update task
+    async def run(self, *, force_from_file: Optional[bool] = False) -> asyncio.Task:
+        """Run the update task."""
+        self._task = asyncio.create_task(self._update_loop())
+        return self._task
+
+    async def stop(self) -> None:
+        """Stop the update task."""
+        if self._task:
+            self._task.cancel()
+            await self._task
+
+    async def _update_loop(self,
+                           *,
+                           force_from_file: Optional[bool] = False) -> None:
+        """Update loop for fetching schema."""
+        try_again = 1
+
+        while True:
+            try:
+                await self.get(force_from_file=force_from_file)
+                await asyncio.sleep(self.update_interval.total_seconds())
+                try_again = 1
+                continue
+
+            except FileNotFoundError as e:
+                log.error(f"Failed to read schema file. {e}. Trying again in {try_again}s")
+
+            except Exception as e:
+                log.error(f"Failed to fetch schema. {e}. Trying again in {try_again}s")
+
+            await asyncio.sleep(try_again)
+            try_again *= 2
 
     # HTTP calls
     async def _fetch_page(self, url: str,
