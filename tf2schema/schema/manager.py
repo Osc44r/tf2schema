@@ -1,6 +1,8 @@
 import asyncio
+import json
 import os
 import time
+from datetime import timedelta
 from logging import getLogger
 from pathlib import Path
 from typing import Optional
@@ -22,16 +24,26 @@ class SchemaManager:
                  steam_api_key: Optional[str] = None,
                  file_path: Optional[Path] = None,
                  save_to_file: Optional[bool] = False,
+                 update_interval: Optional[timedelta] = timedelta(days=1)
                  ):
         self.steam_api_key = steam_api_key
         self.file_path = file_path or Path().parent / "schema.json"
         self.save_to_file = save_to_file
+        self.update_interval = update_interval
 
         self.schema: Optional[Schema] = None
 
     @property
     def has_schema(self) -> bool:
         return self.schema is not None
+
+    async def fetch(self,
+                    *,
+                    force_files: Optional[bool] = False):
+        if force_files:
+            return await self.fetch_schema_from_file()
+
+        return await self.fetch_schema_from_steam()
 
     async def wait_for_schema(self, timeout: Optional[int] = 30):
         start = time.time()
@@ -40,12 +52,14 @@ class SchemaManager:
             if time.time() - start > timeout:
                 raise TimeoutError("Timed out waiting for schema")
 
-    async def fetch_from_steam(self):
-        data = await self._fetch_from_steam()
+    async def fetch_schema_from_steam(self) -> Schema:
+        items = await self._fetch_items_from_steam()
+
+    async def fetch_schema_from_file(self) -> Schema:
+        data = await self._fetch_schema_from_file()
         self.schema = Schema(data)
 
-        if self.save_to_file:
-            await self._save_to_file(data)
+        return self.schema
 
     async def _fetch_page(self, url: str,
                           *,
@@ -65,8 +79,8 @@ class SchemaManager:
 
                     data = response.json()
 
-                    if "result" not in data:
-                        raise ValueError("Invalid response")
+                    if data is None:
+                        raise ValueError("No data received")
 
                     return data
 
@@ -74,7 +88,7 @@ class SchemaManager:
                     log.error(f"Failed to fetch schema page: {e}")
             raise e
 
-    async def _fetch_from_steam(self):
+    async def _fetch_items_from_steam(self) -> list:
         if self.steam_api_key is None:
             raise ValueError("Steam API key is required to fetch schema from Steam")
 
@@ -93,14 +107,16 @@ class SchemaManager:
 
         return items
 
-    async def _fetch_from_file(self):
+    async def _fetch_schema_from_file(self):
         if not self.file_path.exists():
             raise FileNotFoundError("Schema file not found")
 
-        async with aiofiles.open(self.file_path, "r") as f:
-            return await f.read()
+        async with aiofiles.open(self.file_path, "r", encoding="utf-8") as f:
+            content = await f.read()
 
-    async def _save_to_file(self, data: str):
+        return json.loads(content)
+
+    async def _save_schema_to_file(self, data: str):
         os.makedirs(self.file_path.parent, exist_ok=True)
         async with aiofiles.open(self.file_path, "w") as f:
             await f.write(data)
