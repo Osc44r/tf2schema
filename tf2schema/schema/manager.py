@@ -44,7 +44,7 @@ class SchemaManager:
 
     async def get(self,
                   *,
-                  force_files: Optional[bool] = False):
+                  force_files: Optional[bool] = False) -> Schema:
         """
         Get the schema, fetching from Steam if necessary.
 
@@ -55,7 +55,7 @@ class SchemaManager:
 
         return await self.fetch_schema()
 
-    async def wait_for_schema(self, timeout: Optional[int] = 30):
+    async def wait_for_schema(self, timeout: Optional[int] = 30) -> None:
         """
         Wait for the schema to be fetched.
 
@@ -143,7 +143,7 @@ class SchemaManager:
 
         return items
 
-    async def _fetch_paint_kits_from_github(self):
+    async def _fetch_paint_kits_from_github(self) -> dict:
         """Fetch paint kits from the TF2 Github repo."""
         url = "https://raw.githubusercontent.com/SteamDatabase/GameTracking-TF2/master/tf/resource/tf_proto_obj_defs_english.txt"
         response = await self._fetch_page(url)
@@ -174,7 +174,7 @@ class SchemaManager:
         return paintkits_obj
 
     # File operations
-    async def _get_schema_from_file(self):
+    async def _get_schema_from_file(self) -> dict:
         """Get the schema from the file."""
         if not self.file_path.exists():
             raise FileNotFoundError("Schema file not found")
@@ -184,7 +184,7 @@ class SchemaManager:
 
         return json.loads(content)
 
-    async def _save_schema_to_file(self, data: str):
+    async def _save_schema_to_file(self, data: str) -> None:
         """Save the schema to the file."""
         os.makedirs(self.file_path.parent, exist_ok=True)
         async with aiofiles.open(self.file_path, "w") as f:
