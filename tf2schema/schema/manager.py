@@ -18,6 +18,9 @@ log = getLogger(__name__)
 
 
 class SchemaManager:
+    """
+    Schema manager for fetching and storing the TF2 schema.
+    """
     user_agent = UserAgent()
 
     def __init__(self,
@@ -36,28 +39,48 @@ class SchemaManager:
 
     @property
     def has_schema(self) -> bool:
+        """Whether the schema has been fetched."""
         return self.schema is not None
 
     async def get(self,
                   *,
                   force_files: Optional[bool] = False):
+        """
+        Get the schema, fetching from Steam if necessary.
+
+        :param force_files: Whether to force fetching from files.
+        """
         if force_files:
             return await self.get_schema_from_file()
 
-        return await self.fetch_schema_from_steam()
+        return await self.fetch_schema()
 
     async def wait_for_schema(self, timeout: Optional[int] = 30):
+        """
+        Wait for the schema to be fetched.
+
+        :param timeout: The timeout in seconds.
+        """
         start = time.time()
         while not self.has_schema:
             await asyncio.sleep(0.1)
             if time.time() - start > timeout:
                 raise TimeoutError("Timed out waiting for schema")
 
-    async def fetch_schema_from_steam(self) -> Schema:
+    async def fetch_schema(self) -> Schema:
+        """
+        Fetch the schema from Steam and Github.
+
+        :return: Schema object.
+        """
         items = await self._fetch_items_from_steam()
 
     async def get_schema_from_file(self) -> Schema:
-        data = await self._fetch_schema_from_file()
+        """
+        Get the schema from the file.
+        :return: Schema object.
+        """
+        data = await self._get_schema_from_file()
         self.schema = Schema(data)
 
         return self.schema
@@ -67,6 +90,15 @@ class SchemaManager:
                           retries: Optional[int] = 5,
                           headers: Optional[dict] = None,
                           **kwargs) -> httpx.Response:
+        """
+        Fetch a page with retries.
+
+        :param url: Page URL.
+        :param retries: Number of retries.
+        :param headers: Request headers.
+        :param kwargs: Additional request arguments.
+        :return: Response object.
+        """
         if not headers:
             headers = {"User-Agent": self.user_agent.chrome}
 
@@ -88,6 +120,7 @@ class SchemaManager:
             raise e
 
     async def _fetch_items_from_steam(self) -> list:
+        """Fetch items from the Steam API."""
         if self.steam_api_key is None:
             raise ValueError("Steam API key is required to get schema from Steam")
 
@@ -110,6 +143,7 @@ class SchemaManager:
         return items
 
     async def _fetch_paint_kits_from_github(self):
+        """Fetch paint kits from the TF2 Github repo."""
         url = "https://raw.githubusercontent.com/SteamDatabase/GameTracking-TF2/master/tf/resource/tf_proto_obj_defs_english.txt"
         response = await self._fetch_page(url)
 
@@ -138,7 +172,8 @@ class SchemaManager:
 
         return paintkits_obj
 
-    async def _fetch_schema_from_file(self):
+    async def _get_schema_from_file(self):
+        """Get the schema from the file."""
         if not self.file_path.exists():
             raise FileNotFoundError("Schema file not found")
 
@@ -148,6 +183,7 @@ class SchemaManager:
         return json.loads(content)
 
     async def _save_schema_to_file(self, data: str):
+        """Save the schema to the file."""
         os.makedirs(self.file_path.parent, exist_ok=True)
         async with aiofiles.open(self.file_path, "w") as f:
             await f.write(data)
