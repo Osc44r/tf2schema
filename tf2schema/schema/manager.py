@@ -181,6 +181,21 @@ class SchemaManager:
 
         return vdf.loads(response.text)["items_game"]
 
+    async def _fetch_overview(self) -> dict:
+        """"""
+        url = "https://api.steampowered.com/IEconItems_440/GetSchemaOverview"
+        params = {
+            "key": self.steam_api_key,
+            "language": "en"
+        }
+
+        response = await self._fetch_page(url, params=params)
+        data = response.json()
+
+        del data['status']
+
+        return data
+
     # File operations
     async def _get_schema_from_file(self) -> dict:
         """Get the schema from the file."""
