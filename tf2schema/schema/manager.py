@@ -50,10 +50,22 @@ class SchemaManager:
 
         :param force_files: Whether to force fetching from files.
         """
-        if force_files:
-            return await self.get_schema_from_file()
+        try:
+            schema = await self.get_schema_from_file()
 
-        return await self.fetch_schema()
+        except FileNotFoundError as e:
+            if force_files:
+                raise e
+
+            schema = None
+
+        if force_files:
+            return schema
+
+        if schema is None or time.time() - schema.fetch_time > self.update_interval.total_seconds():
+            return await self.fetch_schema()
+
+        return schema
 
     async def wait_for_schema(self, timeout: Optional[int] = 30) -> None:
         """
@@ -73,7 +85,26 @@ class SchemaManager:
 
         :return: Schema object.
         """
-        items = await self._fetch_items_from_steam()
+        items, schema_overview, paint_kits, items_game = await asyncio.gather(
+            self._fetch_items_from_steam(),
+            self._fetch_overview(),
+            self._fetch_paint_kits_from_github(),
+            self._fetch_items_game_from_github()
+        )
+
+        self.schema = Schema({
+            "schema": {
+                **schema_overview,
+                "items": items,
+                "paintkits": paint_kits,
+            },
+            "items_game": items_game
+        }, time.time())
+
+        if self.save_to_file:
+            await self._save_schema_to_file(self.schema.file_data)
+
+        return self.schema
 
     async def get_schema_from_file(self) -> Schema:
         """
@@ -81,7 +112,7 @@ class SchemaManager:
         :return: Schema object.
         """
         data = await self._get_schema_from_file()
-        self.schema = Schema(data)
+        self.schema = Schema(data['raw'], data['fetch_time'])
 
         return self.schema
 
@@ -210,8 +241,8 @@ class SchemaManager:
 
         return json.loads(content)
 
-    async def _save_schema_to_file(self, data: str) -> None:
+    async def _save_schema_to_file(self, data: dict) -> None:
         """Save the schema to the file."""
         os.makedirs(self.file_path.parent, exist_ok=True)
         async with aiofiles.open(self.file_path, "w") as f:
-            await f.write(data)
+            await f.write(json.dumps(data))

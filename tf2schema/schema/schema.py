@@ -15,9 +15,9 @@ def test_sku(sku):
 
 
 class Schema:
-    def __init__(self, data: dict):
-        self.raw = data["raw"] or None
-        self.time = data["time"] or time.time()
+    def __init__(self, raw_data: dict, fetch_time: float):
+        self.raw = raw_data
+        self.fetch_time = fetch_time
         self.crate_series_list = self.get_crate_series_list()
         self.munition_crates_list = self.get_munition_crates_list()
         self.weapon_skins_list = self.get_weapon_skins_list()
@@ -25,6 +25,13 @@ class Schema:
         self.effects = self.get_particle_effects()
         self.paint_kits = self.get_paint_kits_list()
         self.paints = self.get_paints()
+
+    @property
+    def file_data(self):
+        return {
+            "raw": self.raw,
+            "fetch_time": self.fetch_time
+        }
 
     def get_item_by_name_with_the(self, name: str):
         items = self.raw["schema"]["items"]
