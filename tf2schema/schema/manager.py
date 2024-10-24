@@ -9,6 +9,7 @@ from typing import Optional
 
 import aiofiles
 import httpx
+import vdf
 from fake_useragent import UserAgent
 
 from .schema import Schema
@@ -37,11 +38,11 @@ class SchemaManager:
     def has_schema(self) -> bool:
         return self.schema is not None
 
-    async def fetch(self,
-                    *,
-                    force_files: Optional[bool] = False):
+    async def get(self,
+                  *,
+                  force_files: Optional[bool] = False):
         if force_files:
-            return await self.fetch_schema_from_file()
+            return await self.get_schema_from_file()
 
         return await self.fetch_schema_from_steam()
 
@@ -55,7 +56,7 @@ class SchemaManager:
     async def fetch_schema_from_steam(self) -> Schema:
         items = await self._fetch_items_from_steam()
 
-    async def fetch_schema_from_file(self) -> Schema:
+    async def get_schema_from_file(self) -> Schema:
         data = await self._fetch_schema_from_file()
         self.schema = Schema(data)
 
@@ -65,7 +66,7 @@ class SchemaManager:
                           *,
                           retries: Optional[int] = 5,
                           headers: Optional[dict] = None,
-                          **kwargs):
+                          **kwargs) -> httpx.Response:
         if not headers:
             headers = {"User-Agent": self.user_agent.chrome}
 
@@ -77,35 +78,65 @@ class SchemaManager:
 
                     response.raise_for_status()
 
-                    data = response.json()
-
-                    if data is None:
+                    if response.json() is None and response.text is None:
                         raise ValueError("No data received")
 
-                    return data
+                    return response
 
                 except (httpx.HTTPStatusError, ValueError) as e:
-                    log.error(f"Failed to fetch schema page: {e}")
+                    log.error(f"Failed to get schema page: {e}")
             raise e
 
     async def _fetch_items_from_steam(self) -> list:
         if self.steam_api_key is None:
-            raise ValueError("Steam API key is required to fetch schema from Steam")
+            raise ValueError("Steam API key is required to get schema from Steam")
 
         url = "https://api.steampowered.com/IEconItems_440/GetSchemaItems"
         params = {
             "key": self.steam_api_key,
             "language": "en"
         }
-        data = await self._fetch_page(url, params=params)
+        response = await self._fetch_page(url, params=params)
+
+        data = response.json()
 
         items = data["result"]["items"]
         while "next" in data["result"]:
             params["start"] = data["result"]["next"]
-            data = await self._fetch_page(url, params=params)
+            response = await self._fetch_page(url, params=params)
+            data = response.json()
             items += data["result"]["items"]
 
         return items
+
+    async def _fetch_paint_kits_from_github(self):
+        url = "https://raw.githubusercontent.com/SteamDatabase/GameTracking-TF2/master/tf/resource/tf_proto_obj_defs_english.txt"
+        response = await self._fetch_page(url)
+
+        parsed = vdf.loads(response.text)
+
+        protos = parsed["lang"]["Tokens"]
+        paint_kits = []
+        for proto, name in protos.items():
+            parts = proto.split(' ', 1)[0].split('_')
+            if len(parts) != 3 or parts[0] != "9":
+                continue
+
+            definition = parts[1]
+
+            if name.startswith(definition + ':'):
+                continue
+
+            paint_kits.append({"id": definition, "name": name})
+
+        paint_kits.sort(key=lambda x: int(x["id"]))
+
+        paintkits_obj = {}
+        for paint_kit in paint_kits:
+            if paint_kit["name"] not in paintkits_obj.values():
+                paintkits_obj[paint_kit["id"]] = paint_kit["name"]
+
+        return paintkits_obj
 
     async def _fetch_schema_from_file(self):
         if not self.file_path.exists():
