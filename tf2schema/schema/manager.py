@@ -41,6 +41,13 @@ class SchemaManager:
         self.schema: Optional[Schema] = None
         self._task = None
 
+    async def __aenter__(self):
+        await self.run(force_from_file=self.file_only_mode)
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.stop()
+
     @property
     def has_schema(self) -> bool:
         """Whether the schema has been fetched."""
