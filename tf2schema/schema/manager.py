@@ -85,6 +85,7 @@ class SchemaManager:
 
         return self.schema
 
+    # HTTP calls
     async def _fetch_page(self, url: str,
                           *,
                           retries: Optional[int] = 5,
@@ -172,6 +173,7 @@ class SchemaManager:
 
         return paintkits_obj
 
+    # File operations
     async def _get_schema_from_file(self):
         """Get the schema from the file."""
         if not self.file_path.exists():
