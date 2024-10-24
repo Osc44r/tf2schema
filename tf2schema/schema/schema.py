@@ -3,6 +3,9 @@ Unformatted source:
 https://github.com/dixon2004/python-tf2-utilities/blob/main/tf2utilities/schema.py
 """
 
+import math
+import re
+
 from .data import *
 from .. import sku as sku_utils
 
@@ -89,6 +92,9 @@ class Schema:
             item["quality2"] = 11  # noqa
             is_explicit_elevated_strange = True
             name = name.replace("strange(e)", "").strip()
+
+        if "Normal" == name.split(" ")[0]:
+            item["quality"] = 0
 
         if "strange" in name:
             item["quality"] = 11
@@ -502,7 +508,7 @@ class Schema:
                 return item
 
     def get_item_by_sku(self, sku):
-        return self.get_item_by_defindex(SKU.fromString(sku)["defindex"])
+        return self.get_item_by_defindex(sku_utils.from_string(sku)["defindex"])
 
     def get_attribute_by_defindex(self, defindex):
         attributes = self.raw["schema"]["attributes"]
@@ -1024,7 +1030,7 @@ class Schema:
 
     def get_name_from_sku(self, sku):
         if test_sku(sku):
-            return self.get_name(sku_utils.fromString(sku))
+            return self.get_name(sku_utils.from_string(sku))
 
     def get_munition_crates_list(self):
         munition_crates_list = {}
