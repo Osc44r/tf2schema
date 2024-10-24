@@ -90,6 +90,7 @@ class SchemaManager:
                           *,
                           retries: Optional[int] = 5,
                           headers: Optional[dict] = None,
+                          wait_time: Optional[float] = 2,
                           **kwargs) -> httpx.Response:
         """
         Fetch a page with retries.
@@ -97,6 +98,7 @@ class SchemaManager:
         :param url: Page URL.
         :param retries: Number of retries.
         :param headers: Request headers.
+        :param wait_time: Time to wait between retries.
         :param kwargs: Additional request arguments.
         :return: Response object.
         """
@@ -118,6 +120,7 @@ class SchemaManager:
 
                 except (httpx.HTTPStatusError, ValueError) as e:
                     log.error(f"Failed to get schema page: {e}")
+                    await asyncio.sleep(wait_time)
             raise e
 
     async def _fetch_items_from_steam(self) -> list:
