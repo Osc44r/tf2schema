@@ -1,8 +1,12 @@
 from logging import getLogger
+from pathlib import Path
 from typing import Optional
 
+import aiofiles
 import httpx
 from fake_useragent import UserAgent
+
+from .schema import Schema
 
 log = getLogger(__name__)
 
@@ -10,9 +14,15 @@ log = getLogger(__name__)
 class SchemaManager:
     user_agent = UserAgent()
 
-    def __init__(self, steam_api_key: str):
+    def __init__(self,
+                 *,
+                 steam_api_key: Optional[str] = None,
+                 file_path: Optional[Path] = None,
+                 ):
         self.steam_api_key = steam_api_key
-        self.schema = None
+        self.file_path = file_path or Path().parent / "schema.json"
+
+        self.schema: Optional[Schema] = None
 
     async def _fetch_page(self, url: str,
                           *,
@@ -41,7 +51,10 @@ class SchemaManager:
                     log.error(f"Failed to fetch schema page: {e}")
             raise e
 
-    async def fetch_from_steam(self):
+    async def _fetch_from_steam(self):
+        if self.steam_api_key is None:
+            raise ValueError("Steam API key is required to fetch schema from Steam")
+
         url = "https://api.steampowered.com/IEconItems_440/GetSchemaItems"
         params = {
             "key": self.steam_api_key,
@@ -56,3 +69,14 @@ class SchemaManager:
             items += data["result"]["items"]
 
         return items
+
+    async def _fetch_from_file(self):
+        if not self.file_path.exists():
+            raise FileNotFoundError("Schema file not found")
+
+        async with aiofiles.open(self.file_path, "r") as f:
+            return await f.read()
+
+    async def _save_to_file(self, data: str):
+        async with aiofiles.open(self.file_path, "w") as f:
+            await f.write(data)
