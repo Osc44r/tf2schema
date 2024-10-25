@@ -49,7 +49,7 @@ async def schema_manager(steam_api_key, tmp_path_factory):
             file_path=file_path,
             save_to_file=True,
     ) as manager:
-        await manager.wait_for_schema()
+        await manager.wait_for_schema(timeout=90)
         yield manager
 
 
