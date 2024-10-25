@@ -7,8 +7,8 @@ path = pathlib.Path(__file__).parent
 README = (path / "README.md").read_text()
 
 setup(
-    name="tf2schema",
-    version="0.4.3",
+    name="tf2schema-py",
+    version="0.4.4",
     description="A Python package to interact with the Team Fortress 2 Schema",
     long_description=README,
     long_description_content_type="text/markdown",

@@ -18,7 +18,11 @@ extends it with additional features, including async fetch operations and more P
 
 ## Installation
 
-...coming soon...
+You can install the package using `pip`:
+
+```bash
+pip install tf2schema-py
+```
 
 Make sure your environment has the following dependencies installed:
 
