@@ -14,7 +14,7 @@ extends it with additional features, including async fetch operations and more P
 - Automatic schema updates (optional).
 - Pythonic snake_case naming for schema functions.
 - Integration with file-based schema management for environments where file-only mode is preferred.
-- Uses `aiofiles` for async file operations and `httpx` for async HTTP requests.
+- Uses `httpx` for async HTTP requests.
 
 ## Installation
 
@@ -23,7 +23,6 @@ extends it with additional features, including async fetch operations and more P
 Make sure your environment has the following dependencies installed:
 
 - `httpx`
-- `aiofiles`
 - `python-dotenv`
 - `pytest`
 - `pytest-asyncio`

@@ -7,7 +7,6 @@ from logging import getLogger
 from pathlib import Path
 from typing import Optional
 
-import aiofiles
 import httpx
 import vdf
 from fake_useragent import UserAgent
@@ -60,7 +59,7 @@ class SchemaManager:
         :param force_from_file: Whether to force fetching from the file.
         """
         try:
-            schema = await self.get_schema_from_file()
+            schema = self.get_schema_from_file()
 
         except FileNotFoundError as e:
             if force_from_file or self.file_only_mode:
@@ -118,17 +117,17 @@ class SchemaManager:
         }, time.time())
 
         if self.save_to_file:
-            await self._save_schema_to_file(self.schema.file_data)
+            self._save_schema_to_file(self.schema.file_data)
 
         return self.schema
 
-    async def get_schema_from_file(self) -> Schema:
+    def get_schema_from_file(self) -> Schema:
         """
         Get the schema from the file.
 
         :return: Schema object.
         """
-        data = await self._get_schema_from_file()
+        data = self._get_schema_from_file()
         self.schema = Schema(data['raw'], data['fetch_time'])
 
         return self.schema
@@ -296,21 +295,21 @@ class SchemaManager:
         return data
 
     # File operations
-    async def _get_schema_from_file(self) -> dict:
+    def _get_schema_from_file(self) -> dict:
         """Get the schema from the file."""
         if not self.file_path.exists() or self.file_path.stat().st_size == 0:
             raise FileNotFoundError("Schema file not found or is empty.")
 
-        async with aiofiles.open(self.file_path, "r", encoding="utf-8") as f:
-            content = await f.read()
+        with open(self.file_path, "r", encoding="utf-8") as f:
+            content = f.read()
 
         return json.loads(content)
 
-    async def _save_schema_to_file(self, data: dict) -> None:
+    def _save_schema_to_file(self, data: dict) -> None:
         """Save the schema to the file."""
         os.makedirs(self.file_path.parent, exist_ok=True)
-        async with aiofiles.open(self.file_path, "w", encoding="utf-8") as f:
-            await f.write(json.dumps(data))
+        with open(self.file_path, "w", encoding="utf-8") as f:
+            f.write(json.dumps(data))
 
     def _delete_schema_file(self) -> None:
         """Delete the schema file if exists."""

@@ -22,7 +22,7 @@ async def test_get_schema_from_file(schema_manager):
         file_only_mode=True
     )
 
-    schema = await new_manager.get_schema_from_file()
+    schema = new_manager.get_schema_from_file()
 
     assert isinstance(schema, Schema), "Schema is not an instance of Schema."
     assert schema.fetch_time, "Schema fetch time is not set."
