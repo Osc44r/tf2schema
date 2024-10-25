@@ -30,6 +30,8 @@ Make sure your environment has the following dependencies installed:
 
 ## Usage
 
+Head to the [Examples](examples) directory for a quick start guide on how to use the `SchemaManager` & `Schema` classes.
+
 ### Basic Example
 
 By default, when using the `async with` syntax, the `SchemaManager` will start the auto-update loop. If you prefer not
@@ -95,9 +97,6 @@ async def main():
     print(f"Item name for SKU {sku}: {item_name}")
     # Expected output: "Item name for SKU 160;3;u4: Vintage Community Sparkle Lugermorph"
 
-    # Clean up
-    await manager.stop()
-
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -109,6 +108,11 @@ The `SchemaManager` supports an auto-update feature that checks for schema updat
 enable the auto-update loop explicitly, you can do so with the `run` method:
 
 ```python
+import asyncio
+from tf2schema import SchemaManager
+from pathlib import Path
+
+
 async def main():
     steam_api_key = "YOUR_STEAM_API_KEY"
 
@@ -138,6 +142,11 @@ If you want to use the package in environments where the schema should only be f
 containers), you can enable `file_only_mode`:
 
 ```python
+import asyncio
+from tf2schema import SchemaManager
+from pathlib import Path
+
+
 async def main():
     async with SchemaManager(
             file_path=Path(__file__).parent / "schema.json",
