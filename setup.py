@@ -8,7 +8,7 @@ README = (path / "README.md").read_text()
 
 setup(
     name="tf2schema",
-    version="0.4.1",
+    version="0.4.3",
     description="A Python package to interact with the Team Fortress 2 Schema",
     long_description=README,
     long_description_content_type="text/markdown",
@@ -29,7 +29,6 @@ setup(
     ],
     install_requires=[
         "httpx",
-        "aiofiles",
         "python-dotenv",
         "pytest",
         "pytest-asyncio",
