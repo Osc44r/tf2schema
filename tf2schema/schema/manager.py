@@ -298,8 +298,8 @@ class SchemaManager:
     # File operations
     async def _get_schema_from_file(self) -> dict:
         """Get the schema from the file."""
-        if not self.file_path.exists():
-            raise FileNotFoundError("Schema file not found")
+        if not self.file_path.exists() or self.file_path.stat().st_size == 0:
+            raise FileNotFoundError("Schema file not found or is empty.")
 
         async with aiofiles.open(self.file_path, "r", encoding="utf-8") as f:
             content = await f.read()
@@ -309,7 +309,7 @@ class SchemaManager:
     async def _save_schema_to_file(self, data: dict) -> None:
         """Save the schema to the file."""
         os.makedirs(self.file_path.parent, exist_ok=True)
-        async with aiofiles.open(self.file_path, "w") as f:
+        async with aiofiles.open(self.file_path, "w", encoding="utf-8") as f:
             await f.write(json.dumps(data))
 
     def _delete_schema_file(self) -> None:
