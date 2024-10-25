@@ -54,7 +54,7 @@ class Schema:
     def get_sku_from_name(self, name: str):
         return sku_utils.from_object(self.get_item_object_from_name(name))
 
-    def get_item_object_from_name(self, name: str):
+    def get_item_object_from_name(self, name: str) -> dict:
         name = name.lower()
         item = {
             "defindex": None,
