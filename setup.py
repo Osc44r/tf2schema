@@ -8,7 +8,7 @@ README = (path / "README.md").read_text()
 
 setup(
     name="tf2schema-py",
-    version="0.4.6",
+    version="0.4.7",
     description="A Python package to interact with the Team Fortress 2 Schema",
     long_description=README,
     long_description_content_type="text/markdown",

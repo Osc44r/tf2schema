@@ -407,6 +407,7 @@ class Schema:
                     break
 
         else:
+            name = re.sub(r"\sseries\s*#\s*", " #", name)
             name = name.replace(" series ", "").replace(" series#", " #")
             if "salvaged mann co. supply crate #" in name:
                 item["crateseries"] = int(name[32:])

@@ -45,3 +45,17 @@ def test_sku_to_name(schema: Schema):
 def test_name_to_sku(schema: Schema):
     for sku, name in DATA_SKUS_NAMES.items():
         assert schema.get_sku_from_name(name) == sku, f"Name {name} does not match SKU {sku}"
+
+
+
+def test_mannco_supply_series_variants(schema: Schema):
+    # Steam / Express-Load may return "Series #NN" names; these must resolve to the same SKU as "#NN".
+    assert schema.get_sku_from_name("Mann Co. Supply Crate Series #59") == "5045;6;c59"
+    assert schema.get_sku_from_name("Mann Co. Supply Crate Series #59") == schema.get_sku_from_name(
+        "Mann Co. Supply Crate #59"
+    )
+
+    mun_series = schema.get_sku_from_name("Mann Co. Supply Munition Series #91")
+    mun_plain = schema.get_sku_from_name("Mann Co. Supply Munition #91")
+    assert mun_series == mun_plain
+    assert str(mun_series).endswith(";c91")
