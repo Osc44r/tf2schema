@@ -16,6 +16,40 @@ extends it with additional features, including async fetch operations and more P
 - Integration with file-based schema management for environments where file-only mode is preferred.
 - Uses `httpx` for async HTTP requests.
 
+## CrateTF ownership and consumers
+
+`tf2schema` owns low-level TF2 schema fetching, file-backed schema loading, SKU helpers, and schema lookup helpers. It does not own CrateTF catalog, inventory, pricing, recommendations, classifieds, or trade policy.
+
+Current CrateTF consumers include:
+
+- `schema-service`, which fetches and writes the shared schema file.
+- `catalog-service`, `inventory-service`, `trade-api-service`, `trade-orchestrator-service`, `recommendations-service`, and `backpacktf-classifieds-service`, which read schema data directly or through `CrateTfLib` schema helpers.
+- `CrateTfLib`, which wraps local schema cache, schema lookup, lootlist, collection, and catalog metadata helpers.
+
+Compatibility rules:
+
+- Preserve SKU parsing and rendering compatibility unless every catalog/inventory/trade consumer is migrated together.
+- File-backed schema behavior matters in Docker because many services read a shared schema volume rather than fetching from Steam themselves.
+- Do not move CrateTF service policy into this library; keep it as TF2 schema/domain utilities.
+- Schema fetching can touch Steam and GitHub endpoints. Production service retries, leader election, and event publication belong in `schema-service`.
+
+## Public API
+
+Stable imports:
+
+```python
+from tf2schema import Schema, SchemaManager, sku
+from tf2schema.sku import from_string, from_object, from_api
+```
+
+Public behavior:
+
+- `SchemaManager` fetches schema data from Steam/GitHub or loads it from a local file.
+- `Schema` resolves item names, SKUs, qualities, effects, crate series, paint kits, and related TF2 schema metadata.
+- `tf2schema.sku` converts between TF2 SKU strings, item objects, and Steam API item representations.
+
+These helpers are shared contract code. Changes to SKU rendering, file-backed loading, or schema lookup behavior must be treated as cross-service changes for catalog, inventory, trade, schema, recommendations, and classifieds consumers.
+
 ## Installation
 
 You can install the package using `pip`:
@@ -185,10 +219,19 @@ To run the tests, you need to set the `STEAM_API_KEY` as an environment variable
 2. Run the tests using `pytest`:
 
     ```bash
-    pytest
+    uv run --with-requirements requirements.txt --with pytest pytest
     ```
 
 The tests include checks for schema fetching, conversion from SKU to name, and vice versa.
+
+For changes that affect SKU behavior, schema loading, or file-only mode, also run targeted tests in `schema-service`, `catalog-service`, `inventory-service`, and trade consumers as appropriate.
+
+## Release rules
+
+- Documentation-only changes do not require a version bump.
+- Code releases use `setup.py` version.
+- `CrateTfLib` pins `tf2schema-py`, so release `tf2schema` before updating `CrateTfLib` and dependent service images.
+- Do not document real Steam API keys.
 
 ## Contributing
 
