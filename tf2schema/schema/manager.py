@@ -174,6 +174,27 @@ class SchemaManager:
         """Check if the schema is outdated based on the update interval."""
         return time.time() - schema.fetch_time > self.update_interval.total_seconds()
 
+    @staticmethod
+    def _prepare_vdf_text(text: str, *, source: str) -> str:
+        """Remove trailing upstream junk that is not part of VDF syntax."""
+        normalized = text.rstrip("\x00\r\n\t ")
+        stripped_chars = len(text) - len(normalized)
+
+        if not stripped_chars:
+            return text
+
+        log.warning("Stripped %s trailing non-VDF character(s) from %s before parsing.", stripped_chars, source)
+        return normalized + "\n"
+
+    @classmethod
+    def _load_vdf(cls, text: str, *, source: str) -> dict:
+        """Load VDF text with source-specific normalization and errors."""
+        try:
+            return vdf.loads(cls._prepare_vdf_text(text, source=source))
+
+        except Exception as e:
+            raise ValueError(f"Failed to parse {source} VDF: {e}") from e
+
     # HTTP calls
     async def _fetch_page(self, url: str,
                           *,
@@ -246,9 +267,12 @@ class SchemaManager:
         url = "https://raw.githubusercontent.com/SteamDatabase/GameTracking-TF2/master/tf/resource/tf_proto_obj_defs_english.txt"
         response = await self._fetch_page(url)
 
-        parsed = vdf.loads(response.text)
+        parsed = self._load_vdf(response.text, source="paint kits")
 
-        protos = parsed["lang"]["Tokens"]
+        protos = parsed.get("lang", {}).get("Tokens")
+        if not isinstance(protos, dict):
+            raise ValueError("Unexpected paint kits VDF shape: missing lang/Tokens")
+
         paint_kits = []
         for proto, name in protos.items():
             parts = proto.split(' ', 1)[0].split('_')
@@ -277,7 +301,12 @@ class SchemaManager:
 
         response = await self._fetch_page(url)
 
-        return vdf.loads(response.text)["items_game"]
+        parsed = self._load_vdf(response.text, source="items_game")
+        items_game = parsed.get("items_game")
+        if not isinstance(items_game, dict):
+            raise ValueError("Unexpected items_game VDF shape: missing items_game")
+
+        return items_game
 
     async def _fetch_overview_from_steam(self) -> dict:
         """Fetch the schema overview from the Steam API."""

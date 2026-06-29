@@ -32,6 +32,7 @@ Compatibility rules:
 - File-backed schema behavior matters in Docker because many services read a shared schema volume rather than fetching from Steam themselves.
 - Do not move CrateTF service policy into this library; keep it as TF2 schema/domain utilities.
 - Schema fetching can touch Steam and GitHub endpoints. Production service retries, leader election, and event publication belong in `schema-service`.
+- GitHub VDF inputs may contain trailing non-VDF bytes from upstream tracking files; the library normalizes trailing NUL/control junk before parsing while still fetching the latest upstream content.
 
 ## Public API
 
