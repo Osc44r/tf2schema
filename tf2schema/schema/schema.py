@@ -22,6 +22,21 @@ def test_sku(sku):
 
 class Schema:
     def __init__(self, raw_data: dict, fetch_time: float):
+        # GameTracking can contain misplaced sound metadata beside item
+        # definitions. Normalize before any traversal and serialization so
+        # shared files also remain readable by older consumers.
+        items_game = raw_data.get("items_game", {})
+        items = items_game.get("items", {})
+        sound_keys = {"mouse_pressed_sound", "drop_sound"}
+        misplaced = {key for key in sound_keys if isinstance(items.get(key), str)}
+        if misplaced:
+            raw_data = {
+                **raw_data,
+                "items_game": {
+                    **items_game,
+                    "items": {key: value for key, value in items.items() if key not in misplaced},
+                },
+            }
         self.raw = raw_data
         self.fetch_time = fetch_time
         self.crate_series_list = self.get_crate_series_list()
@@ -154,6 +169,8 @@ class Schema:
             'vintage merryweather',
             'haunted kraken',
             'haunted forever!',
+            'haunted hoard case',
+            'haunted hoard key',
             'haunted cremation'
         ]
 

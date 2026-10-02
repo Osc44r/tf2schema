@@ -242,3 +242,25 @@ always welcome!
 ## License
 
 This project is licensed under the MIT License.
+
+## Schema compatibility in 0.4.9
+
+The 1 October 2026 TF2 schema introduced two sound strings directly inside
+`items_game.items`. Schema construction removes only those misplaced
+`mouse_pressed_sound` and `drop_sound` strings from its private copy before
+building indexes and serializing the cache. Actual item definitions, nested
+sound properties, and the caller's input are preserved. This keeps newly written
+schema files readable by older consumers; unrelated malformed item entries are
+not silently discarded.
+
+The quality-prefix parser also recognizes `Haunted Hoard Case` and `Haunted
+Hoard Key` as item names, rather than interpreting `Haunted` as quality 13.
+Their SKUs are `5981;6;c153` and `5982;6`. The existing canonical case-name
+format is `Haunted Hoard Case #153`.
+
+Consumers that resolve these names must install 0.4.9. Loading a compatible
+cache alone does not upgrade their name parser. No public method signatures or
+existing valid SKU formats change.
+
+Offline regression tests: `pytest tests/test_schema_upstream_compatibility.py`.
+The existing full suite also fetches Steam data and requires `STEAM_API_KEY`.

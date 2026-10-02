@@ -12,7 +12,7 @@ DATA_SKUS_NAMES = {
     "382;5;u35": "Smoking Big Country",
     "996;6": "The Loose Cannon",
     "817;5;u13": "Burning Flames Human Cannonball",
-    "30755;5;u263": "Forever And Forever! Berlin Brain Bowl",
+    "30755;5;u263": "Forever and Forever! Berlin Brain Bowl",
     "31374;6": "Hazard Handler",
     "31374;3": "Vintage Hazard Handler",
     "160;3;u4": "Vintage Community Sparkle Lugermorph",
